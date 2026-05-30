@@ -4,6 +4,8 @@ import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, u
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createContext, memo, useContext, useId, useMemo, useRef, useState, forwardRef, useEffect, CSSProperties, Dispatch, SetStateAction, ReactNode } from "react";
+import type { DraggableAttributes } from "@dnd-kit/core";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { KanBan } from "@/lib/myModels/mymodels.types";
 import { MoreVertical, Plus, Trash2, ArrowRightFromLine, Pencil, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -49,8 +51,8 @@ interface TaskCardUIProps {
   setTasks?: (tasks: KanBan[] | ((prev: KanBan[]) => KanBan[])) => void
   boardId: string
   style?: CSSProperties
-  attributes?: Record<string, unknown>
-  listeners?: Record<string, unknown>
+  attributes?: DraggableAttributes
+  listeners?: SyntheticListenerMap
 }
 
 interface AddColumnDialogProps {
