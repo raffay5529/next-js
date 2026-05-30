@@ -9,10 +9,12 @@ const client = new MongoClient(process.env.MONGODB_URI!);
 const db = client.db();
 
 export const auth = betterAuth({
-   trustedOrigins: [
+  baseURL: process.env.BETTER_AUTH_URL!,
+  trustedOrigins: [
     "https://taska-topaz.vercel.app",
     "http://localhost:3000",
   ],
+  allowedHosts: ["*.vercel.app", "localhost:3000"],
   database: mongodbAdapter(db, {
     client,
   }),
