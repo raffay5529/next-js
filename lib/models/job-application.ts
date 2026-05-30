@@ -7,7 +7,7 @@ export interface IJobApplication extends Document {
   status: string;
   columnId: mongoose.Types.ObjectId;
   boardId: mongoose.Types.ObjectId;
-  usrId: string;
+  userId: string;
   order: number;
   notes?: string;
   salary?: string;
@@ -27,7 +27,7 @@ const JobApplicationSchema = new Schema<IJobApplication>(
     status:      { type: String, required: true },
     columnId:    { type: Schema.Types.ObjectId, required: true, ref: "Column", index: true },
     boardId:     { type: Schema.Types.ObjectId, required: true, ref: "Board",  index: true },
-    usrId:       { type: String, required: true, index: true },
+    userId:       { type: String, required: true, index: true },
     order:       { type: Number, required: true },
     notes:       { type: String },
     salary:      { type: String },

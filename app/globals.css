@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@source "inline('bg-cyan-500 bg-purple-500 bg-green-500 bg-yellow-500 bg-red-500')";
 
 @theme inline {
     --font-heading: var(--font-sans);

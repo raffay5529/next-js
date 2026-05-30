@@ -12,7 +12,7 @@ const BoardSchema=new Schema<IBoard>({
   name:{type:String,required:true},
   userId:{type:String,required:true,
     index:true},
-  columns:[{type:Schema.Types.ObjectId,ref:"Column"}],
+  columns:[{type:Schema.Types.ObjectId,ref:"MyColumn"}],
 },{
   timestamps:true,
 });

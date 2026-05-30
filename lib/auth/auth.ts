@@ -15,6 +15,12 @@ export const auth=betterAuth({
     client,
 
   }),
+  session:{
+    cookieCache:{
+      enabled:true,
+      maxAge:60*60,
+    }
+  },
   emailAndPassword:{
     enabled:true,
   },
@@ -32,7 +38,7 @@ export const auth=betterAuth({
 }
 });
 
-export async function getSesssion(){
+export async function getSession(){
   const result=await auth.api.getSession({
     headers:await headers(),
   });
