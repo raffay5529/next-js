@@ -9,7 +9,9 @@ const client = new MongoClient(process.env.MONGODB_URI!);
 const db = client.db();
 
 export const auth = betterAuth({
-  trustedOrigins: ["https://taska-4k6u1gcn5-raffay-s-projects.vercel.app"],
+  trustedOrigins: [
+  process.env.BETTER_AUTH_URL!,
+],
   database: mongodbAdapter(db, {
     client,
   }),
