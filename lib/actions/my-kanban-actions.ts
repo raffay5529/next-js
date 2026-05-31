@@ -151,7 +151,7 @@ export async function deleteBoard(id: string) {
   try {
     await connectDB();
     await Board.findByIdAndDelete(id);
-    await Column.deleteMany({ boardId: id });
+    await myColumns.deleteMany({ boardId: id });
     revalidatePath("/board");
     return { success: true };
   } catch (err) {
