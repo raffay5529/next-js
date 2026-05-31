@@ -12,10 +12,10 @@ const roboto = Roboto({
   weight: ["400", "500", "700"],
 });
 
-export const metadata: Metadata = {
-  title: "MedGenesis",
-  description: "Pakistan's first AI based health system",
-};
+export const metadata = {
+  title: "Taska",
+  description: "Kanban board for teams who move fast",
+}
 
 
 
