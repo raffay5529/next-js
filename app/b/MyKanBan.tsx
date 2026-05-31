@@ -1,6 +1,6 @@
 "use client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, useDroppable, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, useDroppable, PointerSensor, useSensor, useSensors, closestCorners } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { createContext, memo, useContext, useId, useMemo, useRef, useState, forwardRef, useEffect, CSSProperties, Dispatch, SetStateAction, ReactNode } from "react";
@@ -544,7 +544,6 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
 
   const tasksRef = useRef<KanBan[]>(fetchedCardsFromDb);
   const columnIdsRef = useRef<Set<string>>(new Set(columns.map((c) => c._id)));
-  const dragStartColumnRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -581,67 +580,68 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
   function handleDragStart(event: DragStartEvent) {
     const task = tasksRef.current.find((t) => String(t._id) === event.active.id);
     setActiveTask(task ?? null);
-    dragStartColumnRef.current = task?.column ?? null;
   }
 
-  function handleDragOver(event: DragOverEvent) {
+
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveTask(null);
     const { active, over } = event;
+
     if (!over) return;
 
     const taskId = String(active.id);
-    const overId = String(over.id);
     const current = tasksRef.current;
 
     const activeIndex = current.findIndex((t) => String(t._id) === taskId);
     if (activeIndex === -1) return;
 
-    const dragged = current[activeIndex];
+    const overId = String(over.id);
     const overIsColumn = columnIdsRef.current.has(overId);
     const overTask = current.find((t) => String(t._id) === overId);
     const overColumn = overIsColumn ? overId : overTask?.column;
 
     if (!overColumn) return;
 
+    const dragged = current[activeIndex];
+    let updated = current;
+
     if (dragged.column !== overColumn) {
-      let newIndex: number;
-      if (overIsColumn) {
-        newIndex = current.length;
+      // Remove dragged card from current position, assign new column
+      const without = current.filter((t) => String(t._id) !== taskId);
+      const movedCard = { ...dragged, column: overColumn };
+
+      if (!overIsColumn) {
+        // Dropped on a specific card in the target column
+        // Find where that card sits in the filtered array
+        const overIndex = without.findIndex((t) => String(t._id) === overId);
+        if (overIndex !== -1) {
+          updated = [
+            ...without.slice(0, overIndex),
+            movedCard,
+            ...without.slice(overIndex),
+          ];
+        } else {
+          updated = [...without, movedCard];
+        }
       } else {
-        const overIndex = current.findIndex((t) => String(t._id) === overId);
-        newIndex = overIndex !== -1 ? overIndex : current.length;
+        // Dropped on column header — append at end of that column
+        updated = [...without, movedCard];
       }
-      const updated = current.map((t, idx) =>
-        idx === activeIndex ? { ...t, column: overColumn } : t
-      );
-      syncSetTasks(arrayMove(updated, activeIndex, newIndex));
+      void updateCardColumn(taskId, overColumn, boardId);
     } else if (!overIsColumn && taskId !== overId) {
+      // reordered within same column
       const overIndex = current.findIndex((t) => String(t._id) === overId);
       if (overIndex !== -1 && activeIndex !== overIndex) {
-        syncSetTasks(arrayMove(current, activeIndex, overIndex));
+        updated = arrayMove(current, activeIndex, overIndex);
       }
     }
-  }
 
-  async function handleDragEnd(event: DragEndEvent) {
-    setActiveTask(null);
-    const { active, over } = event;
-
-    if (!over) { dragStartColumnRef.current = null; return; }
-
-    const taskId = String(active.id);
-    const current = tasksRef.current;
-    const currentTask = current.find((t) => String(t._id) === taskId);
-
-    if (!currentTask) { dragStartColumnRef.current = null; return; }
-
-    if (dragStartColumnRef.current && currentTask.column !== dragStartColumnRef.current) {
-      await updateCardColumn(taskId, currentTask.column, boardId);
-    }
-    dragStartColumnRef.current = null;
-
-    const withNewOrder = current.map((task, index) => ({ ...task, order: index }));
+    const withNewOrder = updated.map((task, index) => ({ ...task, order: index }));
+    // Update UI immediately before any async DB calls to prevent flash
     syncSetTasks(withNewOrder);
-    await saveOrder(withNewOrder, boardId);
+    // Fire DB calls without awaiting so UI stays stable
+    void saveOrder(withNewOrder, boardId);
   }
 
   return (
@@ -657,7 +657,6 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
               sensors={sensors}
               collisionDetection={closestCorners}
               onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
             >
               {/* On mobile: stacked. On sm+: horizontal scroll row */}
