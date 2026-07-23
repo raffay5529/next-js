@@ -1,12 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useSession, signOut } from "@/lib/auth/auth-client"
-import { LayoutGrid, LogOut, ChevronDown, Mail } from "lucide-react"
+import { LogOut, ChevronDown, Mail } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
-
-// ─── Page label map ───────────────────────────────────────────────────────────
 
 const PAGE_LABELS: Record<string, string> = {
   "/board": "Board",
@@ -17,14 +16,11 @@ function getPageLabel(pathname: string): string | null {
   return null
 }
 
-// ─── UserMenu ─────────────────────────────────────────────────────────────────
-
 function UserMenu({ name, email }: { name: string; email: string }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
-  // Close on outside click
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -46,8 +42,7 @@ function UserMenu({ name, email }: { name: string; email: string }) {
 
   async function handleSignOut() {
     await signOut()
-    router.push("/login")
-    router.refresh()
+    window.location.href = "/login"
   }
 
   return (
@@ -56,10 +51,6 @@ function UserMenu({ name, email }: { name: string; email: string }) {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 hover:bg-slate-100 transition-colors cursor-pointer group"
       >
-        {/* Avatar circle */}
-        <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold tracking-wide shrink-0">
-          {initials}
-        </div>
         <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 hidden sm:block">
           {firstName}
         </span>
@@ -69,10 +60,8 @@ function UserMenu({ name, email }: { name: string; email: string }) {
         />
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50">
-          {/* User info */}
           <div className="px-4 py-3 border-b border-slate-100">
             <p className="text-sm font-bold text-slate-800 truncate">{name}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -80,7 +69,6 @@ function UserMenu({ name, email }: { name: string; email: string }) {
               <p className="text-xs text-slate-500 truncate">{email}</p>
             </div>
           </div>
-          {/* Actions */}
           <div className="p-1.5">
             <button
               onClick={handleSignOut}
@@ -96,8 +84,6 @@ function UserMenu({ name, email }: { name: string; email: string }) {
   )
 }
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-
 export default function Navbar() {
   const { data: session, isPending } = useSession()
   const pathname = usePathname()
@@ -107,18 +93,21 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 w-full bg-white border-b border-slate-200">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-4">
 
-        {/* Left — Logo + optional page label */}
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm group-hover:bg-blue-700 transition-colors">
-              <LayoutGrid size={16} className="text-white" />
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <Image
+              src="/taska.png"
+              alt="Taska Logo"
+              width={32}
+              height={32}
+              className="w-8 h-8 object-contain rounded-xl"
+              priority
+            />
             <span className="text-lg font-extrabold tracking-tight text-slate-900">
               Taska
             </span>
           </Link>
 
-          {/* Page label breadcrumb — only shown on mapped routes */}
           {pageLabel && (
             <>
               <span className="text-slate-300 text-lg font-light select-none">/</span>
@@ -127,10 +116,8 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Right — auth state */}
         <div className="flex items-center gap-2">
           {isPending ? (
-            // Skeleton to avoid layout shift
             <div className="w-24 h-8 rounded-xl bg-slate-100 animate-pulse" />
           ) : session?.user ? (
             <UserMenu

@@ -15,6 +15,9 @@ const roboto = Roboto({
 export const metadata = {
   title: "Taska",
   description: "Kanban board for teams who move fast",
+  icons: {
+    icon: "/taska.png",
+  },
 }
 
 

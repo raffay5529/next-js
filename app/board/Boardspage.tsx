@@ -73,17 +73,21 @@ export default function BoardsPage({ boards, user }: Props) {
         {boards.map((board, index) => (
           <div
             key={board._id}
-            onClick={() => router.push(`/b/${board._id}`)} //changed
-            className="relative bg-white border border-gray-200 rounded-xl p-5 cursor-pointer hover:border-gray-400 transition-colors min-h-[120px] flex flex-col justify-between group"
+            onClick={() => router.push(`/b/${board._id}`)}
+            className="relative rounded-xl p-5 cursor-pointer transition-all min-h-[120px] flex flex-col justify-between group hover:brightness-110"
+            style={{ background: BOARD_COLORS[index % BOARD_COLORS.length] }}
           >
+            {/* dark overlay so text doesn't blend */}
+            <div className="absolute inset-0 rounded-xl bg-black/20 pointer-events-none" />
+
             <div
-              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
               onClick={(e) => e.stopPropagation()}
             >
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="p-1 rounded hover:bg-gray-100">
-                    <MoreVertical size={16} />
+                  <button className="p-1 rounded hover:bg-white/20">
+                    <MoreVertical size={16} className="text-white" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -95,8 +99,8 @@ export default function BoardsPage({ boards, user }: Props) {
                     <Pencil className="mr-2 w-4 h-4" />
                     Edit
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={async() => {
-                   await deleteBoard(board._id)
+                  <DropdownMenuItem onClick={async () => {
+                    await deleteBoard(board._id)
                   }}>
                     <Trash2 className="mr-2 w-4 h-4" />
                     Delete
@@ -105,13 +109,13 @@ export default function BoardsPage({ boards, user }: Props) {
               </DropdownMenu>
             </div>
 
-            <div
-              className="w-8 h-8 rounded-lg mb-3"
-              style={{ background: BOARD_COLORS[index % BOARD_COLORS.length] }}
-            />
-            <div>
-              <p className="font-medium text-gray-900">{board.name}</p>
-              <p className="text-sm text-gray-500 mt-1">
+            <div className="relative z-10">
+              {/* empty top so content stays at bottom */}
+            </div>
+
+            <div className="relative z-10">
+              <p className="font-medium text-white">{board.name}</p>
+              <p className="text-sm text-white/70 mt-1">
                 {board.columns.length} columns
               </p>
             </div>
@@ -136,6 +140,7 @@ export default function BoardsPage({ boards, user }: Props) {
               <div className="flex flex-col gap-1">
                 <label className="text-sm font-medium">Board name</label>
                 <input
+                maxLength={50}
                   value={boardName}
                   onChange={(e) => setBoardName(e.target.value)}
                   placeholder="e.g. Sprint 15"
@@ -182,7 +187,6 @@ export default function BoardsPage({ boards, user }: Props) {
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  
                   className="border rounded px-3 py-2 text-sm"
                 />
               </div>

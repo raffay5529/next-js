@@ -7,7 +7,7 @@ import { createContext, memo, useContext, useId, useMemo, useRef, useState, forw
 import type { DraggableAttributes } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { KanBan } from "@/lib/myModels/mymodels.types";
-import { MoreVertical, Plus, Trash2, ArrowRightFromLine, Pencil, X } from "lucide-react";
+import { MoreVertical, Plus, Trash2, ArrowRightFromLine, Pencil, X, Loader2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { DialogTrigger, DialogContent, Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -53,6 +53,7 @@ interface TaskCardUIProps {
   style?: CSSProperties
   attributes?: DraggableAttributes
   listeners?: SyntheticListenerMap
+  onCardClick?: (data: KanBan) => void
 }
 
 interface AddColumnDialogProps {
@@ -77,6 +78,12 @@ interface CardDialogProps {
   colId: string
   colName: string
   boardId: string
+}
+
+interface CardViewDialogProps {
+  open: boolean
+  onOpenChange: Dispatch<SetStateAction<boolean>>
+  data: KanBan
 }
 
 interface FormFieldProps {
@@ -135,6 +142,7 @@ const inputCls =
 
 function AddColumnDialog({ open, onOpenChange, boardId }: AddColumnDialogProps) {
   const [newColName, setNewColName] = useState<string>("");
+  const [loading, setLoading] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,6 +155,7 @@ function AddColumnDialog({ open, onOpenChange, boardId }: AddColumnDialogProps) 
         <div className="flex flex-col gap-4 pt-1">
           <FormField label="Column Name">
             <input
+            maxLength={50}
               value={newColName}
               onChange={(e) => setNewColName(e.target.value)}
               className={inputCls}
@@ -155,15 +164,28 @@ function AddColumnDialog({ open, onOpenChange, boardId }: AddColumnDialogProps) 
             />
           </FormField>
           <Button
-            className="cursor-pointer h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition"
+            disabled={loading}
+            className="cursor-pointer h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition disabled:opacity-70 disabled:cursor-not-allowed"
             onClick={async () => {
-              if (!newColName.trim()) return;
-              await createColumn(newColName, boardId);
-              setNewColName("");
-              onOpenChange(false);
+              if (loading || !newColName.trim()) return;
+              setLoading(true);
+              try {
+                await createColumn(newColName, boardId);
+                setNewColName("");
+                onOpenChange(false);
+              } finally {
+                setLoading(false);
+              }
             }}
           >
-            Create Column
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={15} className="animate-spin" />
+                Creating…
+              </span>
+            ) : (
+              "Create Column"
+            )}
           </Button>
         </div>
       </DialogContent>
@@ -211,6 +233,7 @@ function EditColumnDialog({ open, onOpenChange, colId, colName, boardId }: EditC
 
 function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName, boardId }: CardDialogProps) {
   const isEditing = Boolean(formData._id);
+  const [loading, setLoading] = useState(false);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,6 +246,7 @@ function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName,
         <div className="flex flex-col gap-4 pt-1">
           <FormField label="Title">
             <input
+            maxLength={100}
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className={inputCls}
@@ -231,6 +255,7 @@ function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName,
           </FormField>
           <FormField label="Description">
             <textarea
+            maxLength={1000}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className={`${inputCls} resize-none`}
@@ -240,6 +265,7 @@ function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName,
           </FormField>
           <FormField label="Tags">
             <input
+            maxLength={100}
               value={formData.tag}
               onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
               className={inputCls}
@@ -249,6 +275,7 @@ function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName,
           <FormField label="Assignee">
             <input
               value={formData.assignee}
+              maxLength={50}
               onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
               className={inputCls}
               placeholder="Team member name"
@@ -262,20 +289,89 @@ function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName,
             />
           </FormField>
           <Button
-            className="cursor-pointer h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition mt-1"
+            disabled={loading}
+            className="cursor-pointer h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition mt-1 disabled:opacity-70 disabled:cursor-not-allowed"
             onClick={async () => {
+              if (loading) return;
               if (!formData.title || !formData.tag) { alert("Please fill all required fields"); return; }
-              if (formData._id) {
-                await updateCard(formData._id, formData, boardId);
+              setLoading(true);
+              try {
+                if (formData._id) {
+                  await updateCard(formData._id, formData, boardId);
+                } else {
+                  await createCard({ ...formData, column: colId }, boardId);
+                }
                 onOpenChange(false);
-                return;
+              } finally {
+                setLoading(false);
               }
-              await createCard({ ...formData, column: colId }, boardId);
-              onOpenChange(false);
             }}
           >
-            {isEditing ? "Save Changes" : "Create Card"}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <Loader2 size={15} className="animate-spin" />
+                {isEditing ? "Saving…" : "Creating…"}
+              </span>
+            ) : (
+              isEditing ? "Save Changes" : "Create Card"
+            )}
           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── CardViewDialog ───────────────────────────────────────────────────────────
+
+function CardViewDialog({ open, onOpenChange, data }: CardViewDialogProps) {
+  const tags = data.tag ? data.tag.split(",").map((t) => t.trim()).filter(Boolean) : [];
+  const avatarColor = data.assignee ? getAvatarColor(data.assignee) : "bg-slate-400";
+  const initials = data.initials || (data.assignee ? data.assignee.charAt(0).toUpperCase() : "?");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined} className="bg-white border border-slate-300 shadow-2xl rounded-2xl max-w-md w-full mx-4 max-h-[80vh] flex flex-col">
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="text-base font-bold text-slate-900 tracking-tight pr-6 leading-snug">
+            {data.title}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="overflow-y-auto flex-1 flex flex-col gap-4 pt-1 pr-1">
+          {data.description && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</span>
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                {data.description}
+              </p>
+            </div>
+          )}
+          {tags.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tags</span>
+              <div className="flex flex-wrap gap-1.5">
+                {tags.map((t, index) => (
+                  <span
+                    key={index}
+                    className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${TAG_COLORS[index % 5]}`}
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {data.assignee && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Assignee</span>
+              <div className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold uppercase shrink-0 ${avatarColor}`}>
+                  {initials}
+                </div>
+                <span className="text-sm text-slate-700 font-medium">{data.assignee}</span>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -285,7 +381,7 @@ function CardDialog({ open, onOpenChange, formData, setFormData, colId, colName,
 // ─── TaskCardUI ───────────────────────────────────────────────────────────────
 
 const TaskCardUI = forwardRef<HTMLDivElement, TaskCardUIProps>(
-  ({ data, setOpen, setFormData, setTasks, boardId, style, attributes, listeners }, ref) => {
+  ({ data, setOpen, setFormData, setTasks, boardId, style, attributes, listeners, onCardClick }, ref) => {
     const columns = useColumns();
     const otherColumns = columns.filter((c) => c._id !== data.column);
     const tags = data.tag ? data.tag.split(",").map((t) => t.trim()).filter(Boolean) : [];
@@ -298,6 +394,7 @@ const TaskCardUI = forwardRef<HTMLDivElement, TaskCardUIProps>(
         {...listeners}
         {...attributes}
         style={style}
+        onClick={() => onCardClick?.(data)}
         className="w-full bg-white border border-slate-300 shadow-sm hover:shadow-lg hover:border-slate-400 transition-all duration-150 cursor-grab active:cursor-grabbing rounded-xl overflow-hidden"
       >
         <CardHeader className="relative pb-2 pt-4 px-4">
@@ -316,7 +413,7 @@ const TaskCardUI = forwardRef<HTMLDivElement, TaskCardUIProps>(
               {setFormData && setOpen && (
                 <DropdownMenuItem
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-100 text-sm font-medium"
-                  onClick={() => { setFormData(data); setOpen(true); }}
+                  onClick={(e) => { e.stopPropagation(); setFormData(data); setOpen(true); }}
                 >
                   <Pencil size={14} className="text-blue-500" />
                   Edit Card
@@ -325,7 +422,8 @@ const TaskCardUI = forwardRef<HTMLDivElement, TaskCardUIProps>(
               {setTasks && (
                 <DropdownMenuItem
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer hover:bg-rose-50 text-sm font-medium text-rose-600"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     deleteCard(data._id!, boardId);
                     setTasks((prev) => prev.filter((t) => String(t._id) !== String(data._id)));
                   }}
@@ -341,7 +439,8 @@ const TaskCardUI = forwardRef<HTMLDivElement, TaskCardUIProps>(
                 <DropdownMenuItem
                   key={c._id}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-100 text-sm font-medium"
-                  onClick={async () => {
+                  onClick={async (e) => {
+                    e.stopPropagation();
                     await changeCardColumn(String(data._id), c._id, boardId);
                     setTasks((prev) =>
                       prev.map((t) => String(t._id) === String(data._id) ? { ...t, column: c._id } : t)
@@ -396,6 +495,8 @@ TaskCardUI.displayName = "TaskCardUI";
 // ─── TaskCard ─────────────────────────────────────────────────────────────────
 
 function TaskCard({ data, setOpen, setFormData, setTasks, boardId }: TaskCardProps) {
+  const [viewOpen, setViewOpen] = useState(false);
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: String(data._id),
   });
@@ -407,17 +508,21 @@ function TaskCard({ data, setOpen, setFormData, setTasks, boardId }: TaskCardPro
   };
 
   return (
-    <TaskCardUI
-      ref={setNodeRef}
-      data={data}
-      setOpen={setOpen}
-      setFormData={setFormData}
-      setTasks={setTasks}
-      boardId={boardId}
-      style={style}
-      attributes={attributes}
-      listeners={listeners}
-    />
+    <>
+      <TaskCardUI
+        ref={setNodeRef}
+        data={data}
+        setOpen={setOpen}
+        setFormData={setFormData}
+        setTasks={setTasks}
+        boardId={boardId}
+        style={style}
+        attributes={attributes}
+        listeners={listeners}
+        onCardClick={(d) => setViewOpen(true)}
+      />
+      <CardViewDialog open={viewOpen} onOpenChange={setViewOpen} data={data} />
+    </>
   );
 }
 
@@ -582,8 +687,6 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
     setActiveTask(task ?? null);
   }
 
-
-
   function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null);
     const { active, over } = event;
@@ -607,13 +710,10 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
     let updated = current;
 
     if (dragged.column !== overColumn) {
-      // Remove dragged card from current position, assign new column
       const without = current.filter((t) => String(t._id) !== taskId);
       const movedCard = { ...dragged, column: overColumn };
 
       if (!overIsColumn) {
-        // Dropped on a specific card in the target column
-        // Find where that card sits in the filtered array
         const overIndex = without.findIndex((t) => String(t._id) === overId);
         if (overIndex !== -1) {
           updated = [
@@ -625,12 +725,10 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
           updated = [...without, movedCard];
         }
       } else {
-        // Dropped on column header — append at end of that column
         updated = [...without, movedCard];
       }
       void updateCardColumn(taskId, overColumn, boardId);
     } else if (!overIsColumn && taskId !== overId) {
-      // reordered within same column
       const overIndex = current.findIndex((t) => String(t._id) === overId);
       if (overIndex !== -1 && activeIndex !== overIndex) {
         updated = arrayMove(current, activeIndex, overIndex);
@@ -638,17 +736,13 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
     }
 
     const withNewOrder = updated.map((task, index) => ({ ...task, order: index }));
-    // Update UI immediately before any async DB calls to prevent flash
     syncSetTasks(withNewOrder);
-    // Fire DB calls without awaiting so UI stays stable
     void saveOrder(withNewOrder, boardId);
   }
 
   return (
     <ColumnsContext.Provider value={stableColumns}>
-      {/* Page shell */}
       <div className="min-h-screen w-full bg-white">
-        {/* Scrollable board area */}
         <div className="w-full overflow-x-auto">
           <div className="flex items-start gap-4 px-4 sm:px-6 lg:px-8 py-6 min-h-screen
                           flex-col sm:flex-row sm:flex-nowrap">
@@ -659,14 +753,12 @@ export default function Board({ columns, fetchedCardsFromDb, boardId }: BoardPro
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              {/* On mobile: stacked. On sm+: horizontal scroll row */}
               <div className="flex flex-col gap-4 w-full
                               sm:flex-row sm:items-start sm:gap-4 sm:w-auto">
                 {columns.map((col) => (
                   <Column key={col._id} col={col} tasks={tasks} setTasks={syncSetTasks} boardId={boardId} />
                 ))}
 
-                {/* Add column */}
                 <div className="flex sm:items-start w-full sm:w-auto pt-0.5">
                   <button
                     onClick={() => setAddColOpen(true)}
