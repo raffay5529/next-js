@@ -51,6 +51,9 @@ function UserMenu({ name, email }: { name: string; email: string }) {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-xl px-2.5 py-1.5 hover:bg-slate-100 transition-colors cursor-pointer group"
       >
+        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold sm:hidden">
+          {initials}
+        </span>
         <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 hidden sm:block">
           {firstName}
         </span>
